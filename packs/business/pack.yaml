@@ -1,35 +1,47 @@
-# 遵循 schemas/pack_manifest.schema.yaml
 pack: business
 name: 商业计划书与融资材料
 kind: writing_module
-version: 0.0.1
-status: planned          # 未交付 prompt target, 不可即插即用
+version: 0.2.0
 language: zh-CN
 owner: valentino
-description: >
-  BP 正文 / 路演稿 / 演讲口播三种文风分治; 陈述强制定级(verified_fact/internal_data/
-  external_estimate/management_assumption/forecast/aspiration), 定级只降不升,
-  防止"计划达到"被润色成"已经实现"。市场规模的事实/假设/推算三分离。
-  特化负面规则: 口号替代论证、护城河空转表述、形式化风险列举。
-
-# 计划中的输入: 投资阶段 / 材料类型(BP章节|路演稿|口播) / 陈述定级清单 / 财务数据锁定表
-# 计划中的输出: 改写稿 + 陈述定级核对表 + 数字回归报告
-# 规范载体: 参照 platform_mechanisms 结构派生 bp_norms(forbidden_claim_patterns:
-#   "行业第一/重新定义/保证回报"等无据宣称)
-
+description: 处理 BP、路演稿与口播，强制区分事实、内部数据、外部估计、假设、预测和愿景，陈述级别不得升级。
+inputs:
+  - {slot: 投资阶段, type: text, required: true, source: user, description: 种子、天使、A轮等}
+  - slot: 材料类型
+    type: enum
+    required: true
+    source: user
+    enum: [bp_section, pitch_script, spoken_pitch, memo]
+    description: 交付形态
+  - {slot: 陈述定级清单, type: markdown, required: true, source: ledger, description: 事实与预测的级别}
+  - {slot: 原文/信息点, type: text, required: true, source: user, description: 唯一内容来源}
+outputs:
+  - {name: final, format: markdown, description: 改写稿}
+  - {name: statement_grading, format: table, description: 陈述级别回归}
+  - {name: numeric_audit, format: json, description: 数字审计}
+  - {name: diff, format: markdown, description: 差异}
 targets:
-  prompt: {file: null, since: v0.1}
+  prompt: {file: prompt.business_rewrite.zh.md, since: v0.1}
   skill: {file: null, since: v0.1}
   mcp: {tool: style_rewrite, since: v0.2}
-
-dod:
-  prompt_target_exists: false
-  self_audit_embedded: false
-  negative_rules_referenced: false
-  example_filled: false
-  blind_test_passed: false
-  facts_style_isolated: false
-  changelog_updated: true
-
+compiled_from:
+  blocks: [task_contract, content_ledger, style_card, domain_pack, exemplars, operation_rules, output_contract]
+  style_cards: []
+  domain_pack: packs/business
+  negative_cards: [packs/global/deai.negative.zh.yaml]
+delivery: {prompt: ready, skill: buildable, cli: ready, mcp: ready, api: ready}
+validation:
+  example: passed
+  automated_smoke: passed
+  formal_blind_test: pending
+  real_pilot: pending
+  notes: [事实、预测和愿景必须分级；自动化 fixture 不能替代投资人盲测。]
+maturity: engine_compiled
+eval:
+  evaluator_profile: business
+  baseline: one_shot_bp_polish
+  smoke_set: evaluations/smoke/business
+  formal_set: null
+  gates: {statement_grade_intact: true, numeric_drift: 0, forecast_to_fact_upgrades: 0, new_hard_facts: 0}
 changelog:
-  - {version: 0.0.1, date: 2026-08-27, change: 占位建卡, 范围与流程定义见 docs/00_方案总览.md §4}
+  - {version: 0.2.0, date: 2026-08-28, change: 从占位卡升级为可运行 Pack，加入陈述定级与数字回归}
