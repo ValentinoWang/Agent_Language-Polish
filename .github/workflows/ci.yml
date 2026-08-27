@@ -1,0 +1,25 @@
+name: ci
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: uv sync --extra dev
+      - run: uv run ruff check src tests
+      - run: uv run pytest --cov=styleos --cov-report=term-missing
+      - run: uv run styleos pack lint
+      - run: uv run styleos schema-export --output generated/schemas
+      - run: uv run styleos pack build --output .claude/skills
