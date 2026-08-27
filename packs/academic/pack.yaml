@@ -1,34 +1,47 @@
-# 遵循 schemas/pack_manifest.schema.yaml
 pack: academic
 name: 科研论文写作与润色
 kind: writing_module
-version: 0.0.1
-status: planned          # 未交付 prompt target, 不可即插即用
+version: 0.2.0
 language: zh-CN
 owner: valentino
-description: >
-  论文分章节功能润色(摘要/引言/方法/结果/讨论各有规则)、审稿意见回复、中英互译防翻译腔。
-  流程沿用: 证据冻结→主张-证据矩阵→章节功能检查→语言重写→数值/公式/引用回归→学术语气审计→diff。
-  特化负面规则: 教科书式定义腔、novelty 夸大、弱证据配"证明/揭示本质"、限制条件丢失。
-
-# 计划中的输入: 章节类型 / 目标期刊 / StyleCard(作者学术卡) / LaTeX原文(公式命令锁定)
-# 计划中的输出: 改写稿 + diff + 主张强度核对表
-# 规范载体: 参照 openclaw-media config/platform_mechanisms/*.json 的结构派生 academic_norms
-#   (含 forbidden_claim_patterns: 无证据的"首次发现/普遍适用/证明了"等)
-
+description: 按章节功能改写论文文本，锁定 LaTeX、引用、数值和术语，并单独审计主张强度与适用范围。
+inputs:
+  - slot: 章节类型
+    type: enum
+    required: true
+    source: user
+    enum: [abstract, introduction, methods, results, discussion, conclusion, response_letter]
+    description: 章节功能
+  - {slot: 目标期刊/受众, type: text, required: true, source: user, description: 语域}
+  - {slot: 学术风格卡, type: yaml, required: false, source: style_card, description: 作者卡}
+  - {slot: 原文, type: text, required: true, source: user, description: LaTeX 或纯文本}
+outputs:
+  - {name: final, format: markdown, description: 改写稿}
+  - {name: diff, format: markdown, description: 逐行差异}
+  - {name: claim_matrix, format: table, description: 主张、证据、强度与边界}
+  - {name: audit, format: json, description: 公式、引用和主张审计}
 targets:
-  prompt: {file: null, since: v0.1}
+  prompt: {file: prompt.academic_rewrite.zh.md, since: v0.1}
   skill: {file: null, since: v0.1}
   mcp: {tool: style_rewrite, since: v0.2}
-
-dod:
-  prompt_target_exists: false
-  self_audit_embedded: false
-  negative_rules_referenced: false
-  example_filled: false
-  blind_test_passed: false
-  facts_style_isolated: false
-  changelog_updated: true
-
+compiled_from:
+  blocks: [task_contract, content_ledger, style_card, domain_pack, exemplars, operation_rules, output_contract]
+  style_cards: []
+  domain_pack: packs/academic
+  negative_cards: [packs/global/deai.negative.zh.yaml]
+delivery: {prompt: ready, skill: buildable, cli: ready, mcp: ready, api: ready}
+validation:
+  example: passed
+  automated_smoke: passed
+  formal_blind_test: pending
+  real_pilot: pending
+  notes: [学术语义不确定时必须人工复核，不自动发布。]
+maturity: engine_compiled
+eval:
+  evaluator_profile: academic
+  baseline: one_shot_academic_polish
+  smoke_set: evaluations/smoke/academic
+  formal_set: null
+  gates: {equations_intact: true, citations_intact: true, numeric_drift: 0, claim_strength_upgrade: 0, conditions_intact: true}
 changelog:
-  - {version: 0.0.1, date: 2026-08-27, change: 占位建卡, 范围与流程定义见 docs/00_方案总览.md §4}
+  - {version: 0.2.0, date: 2026-08-28, change: 从占位卡升级为可运行 Pack，加入学术硬锁与语义审计}
