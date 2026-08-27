@@ -22,6 +22,7 @@
 - [`docs/00_方案总览.md`](docs/00_方案总览.md) —— **从这里读**：交付形态决策、Pack 契约、各模块交付规范、路线图
 - [`docs/01_StyleOS_原始方案.md`](docs/01_StyleOS_原始方案.md) —— 原始完整方案归档（架构/四类记忆/蒸馏流程/评测体系）
 - [`docs/02_openclaw_media_复用清单.md`](docs/02_openclaw_media_复用清单.md) —— 已有代码盘点与复用策略
+- [`docs/03_开发计划_v0-v0.3.md`](docs/03_开发计划_v0-v0.3.md) —— 执行层任务书：工作分解、验收条件、风险应对
 - [`schemas/`](schemas/) —— StyleCard / 内容账本 / Pack manifest 三个契约
 - [`packs/README.md`](packs/README.md) —— Pack 使用入口与修改规矩
 

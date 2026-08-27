@@ -83,6 +83,8 @@ dod:
   blind_test_passed: false         # 人工盲测: 对基线("一句话去AI味")的偏好率占优
   facts_style_isolated: false      # 复核确认: 模板不诱导从范例继承事实
   changelog_updated: false
+  # —— 泛化门禁: 引入新赛道的 writing_module 适用(v0 存量 pack 免填), 见 docs/00 §2.4 ——
+  core_layers_untouched: false     # 本 pack 上线未修改 schemas/ 与 packs/global/
 
 # ---- 评测 --------------------------------------------------------------------
 eval:
@@ -92,5 +94,6 @@ eval:
     locked_content_intact: 1.0  # 锁定内容保持率
     unsourced_new_facts: 0
     human_preference_over_baseline: ">0.6"
+    shared_rule_ratio: ">0.6"       # 新赛道 pack: 引用规则中第0/1层占比, 见 docs/00 §2.4
 
 changelog: []          # {version, date, change}
