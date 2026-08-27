@@ -1,0 +1,37 @@
+services:
+  styleos-api:
+    build: .
+    environment:
+      STYLEOS_REPOSITORY_ROOT: /app
+      STYLEOS_HOME: /data
+    ports: ["8000:8000"]
+    volumes: ["styleos-data:/data"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  postgres:
+    image: postgres:16-alpine
+    profiles: ["remote"]
+    environment:
+      POSTGRES_USER: styleos
+      POSTGRES_PASSWORD: styleos
+      POSTGRES_DB: styleos
+    volumes: ["postgres-data:/var/lib/postgresql/data"]
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    profiles: ["remote"]
+    volumes: ["qdrant-data:/qdrant/storage"]
+
+  grobid:
+    image: lfoppiano/grobid:0.8.1
+    profiles: ["documents"]
+    ports: ["8070:8070"]
+
+volumes:
+  styleos-data:
+  postgres-data:
+  qdrant-data:
