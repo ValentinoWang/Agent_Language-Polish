@@ -1,0 +1,87 @@
+# 遵循 schemas/pack_manifest.schema.yaml
+pack: imitate
+name: 指定风格创作（StyleCard + 信息点 → 成稿）
+kind: writing_module
+version: 0.1.0
+status: usable
+language: zh-CN
+owner: valentino
+description: >
+  以人工批准的 StyleCard 为风格源、以内容账本为唯一事实源, 分层完成"提纲→成稿→
+  负面规则扫描→风格自评→账本回归"。含无卡降级用法(范文即席蒸馏)。
+
+inputs:
+  - slot: 任务类型
+    type: enum
+    required: true
+    source: user
+    enum: [create, rewrite]
+  - slot: 体裁/渠道/受众/篇幅
+    type: text
+    required: true
+    source: user
+  - slot: 改写强度
+    type: enum
+    required: false
+    source: user
+    enum: [conservative, balanced, strong]
+    description: 仅 rewrite 任务
+  - slot: 风格卡
+    type: yaml
+    required: true
+    source: style_card
+    description: distill pack 产出并 human_approved 的 StyleCard; 降级用法可用 2-3 篇范文替代
+  - slot: 内容账本
+    type: markdown
+    required: true
+    source: ledger
+    description: create 任务为信息点清单; rewrite 任务由模板内嵌步骤从原稿抽取
+
+outputs:
+  - name: outline
+    format: markdown
+    description: 段落功能提纲
+  - name: final
+    format: markdown
+    description: 成稿全文
+  - name: self_check
+    format: markdown
+    description: 风格命中5处 + 账本回归 + 负面规则扫描 + 冲突缺口
+
+targets:
+  prompt:
+    file: prompt.style_imitate.zh.md
+    since: v0
+  skill:
+    file: null
+    since: v0.1
+  mcp:
+    tool: style_rewrite
+    since: v0.2
+
+compiled_from:
+  blocks: [task_contract, content_ledger, style_card, exemplars, operation_rules, output_contract]
+  style_cards: []          # 使用时由槽位注入
+  domain_pack: null
+  negative_cards:
+    - packs/global/deai.negative.zh.yaml
+
+dod:
+  prompt_target_exists: true
+  self_audit_embedded: true
+  negative_rules_referenced: true
+  example_filled: false
+  blind_test_passed: false
+  facts_style_isolated: true
+  changelog_updated: true
+
+eval:
+  blind_test_set: null
+  baseline: paste_examples_only    # 对照: 只贴范文说"模仿这个风格写"
+  gates:
+    locked_content_intact: 1.0
+    unsourced_new_facts: 0
+    human_preference_over_baseline: ">0.6"
+
+changelog:
+  - {version: 0.1.0, date: 2026-08-27, change: 首版, 形实双源隔离 + 分层写作 + 三重自检 + 降级用法}

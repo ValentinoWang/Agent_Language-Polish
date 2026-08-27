@@ -1,0 +1,34 @@
+# 遵循 schemas/pack_manifest.schema.yaml
+pack: academic
+name: 科研论文写作与润色
+kind: writing_module
+version: 0.0.1
+status: planned          # 未交付 prompt target, 不可即插即用
+language: zh-CN
+owner: valentino
+description: >
+  论文分章节功能润色(摘要/引言/方法/结果/讨论各有规则)、审稿意见回复、中英互译防翻译腔。
+  流程沿用: 证据冻结→主张-证据矩阵→章节功能检查→语言重写→数值/公式/引用回归→学术语气审计→diff。
+  特化负面规则: 教科书式定义腔、novelty 夸大、弱证据配"证明/揭示本质"、限制条件丢失。
+
+# 计划中的输入: 章节类型 / 目标期刊 / StyleCard(作者学术卡) / LaTeX原文(公式命令锁定)
+# 计划中的输出: 改写稿 + diff + 主张强度核对表
+# 规范载体: 参照 openclaw-media config/platform_mechanisms/*.json 的结构派生 academic_norms
+#   (含 forbidden_claim_patterns: 无证据的"首次发现/普遍适用/证明了"等)
+
+targets:
+  prompt: {file: null, since: v0.1}
+  skill: {file: null, since: v0.1}
+  mcp: {tool: style_rewrite, since: v0.2}
+
+dod:
+  prompt_target_exists: false
+  self_audit_embedded: false
+  negative_rules_referenced: false
+  example_filled: false
+  blind_test_passed: false
+  facts_style_isolated: false
+  changelog_updated: true
+
+changelog:
+  - {version: 0.0.1, date: 2026-08-27, change: 占位建卡, 范围与流程定义见 docs/00_方案总览.md §4}

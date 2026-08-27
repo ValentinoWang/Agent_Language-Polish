@@ -1,0 +1,181 @@
+# =============================================================================
+# 去AI味负面规则卡(中文·全局) v0.1
+# id: global.deai.negative.zh
+# -----------------------------------------------------------------------------
+# 定位: 这不是禁词表, 而是一套条件式规则。"去AI味"的目标不是骗过检测器,
+# 而是删掉没有信息增量的模式化表达, 让结论强度对齐证据, 让人物/作者显得真实。
+#
+# 每条规则四要素: 识别特征(detect) / 处置策略(policy) / 例外条件(allow_when)
+# / 改写方向(fix_hint)。policy 取值:
+#   remove_when_no_function  无逻辑功能时删除
+#   conditional              满足 allow_when 才保留, 否则改写
+#   forbid                   一律不用(极少数)
+#   cap                      限制频次
+#
+# 使用方式: 被各 Pack 引用内嵌; 单独使用见同目录 prompt.deai_rewrite.zh.md。
+# 各赛道可在自己的 StyleCard.negative_patterns 里用相同 id 覆盖 policy。
+# =============================================================================
+
+principles:   # 改写时的正向原则, 与负面规则配套, 防止"删完只剩骨架"
+  - 每句话要有信息增量; 删掉一句而全文信息不变, 这句就该删。
+  - 用具体名词和动作代替抽象概括; 写"转化率从2%到7%", 不写"效果显著提升"。
+  - 结论强度只能对齐证据强度, 不能对齐情绪需要。
+  - 节奏来自内容的轻重缓急, 不来自固定句式模板。
+  - 保留作者的不完美: 真实的口语有停顿、有偏好、有省略, 不是每句都四平八稳。
+
+rules:
+
+  # ---- 开场与过渡 ------------------------------------------------------------
+  - id: empty_opening
+    name: 空泛开场
+    detect: 以无信息量的时代背景/宏观铺垫开头
+    examples_bad: ["在当今快速发展的时代", "随着人工智能技术的不断进步", "近年来，越来越多的人"]
+    policy: remove_when_no_function
+    fix_hint: 直接从冲突、结果、场景或具体事实进入; 删掉开场后如果文章不缺东西, 就删。
+
+  - id: empty_transition
+    name: 空转过渡语
+    detect: 过渡词不承担任何逻辑功能, 只是填缝
+    examples_bad: ["值得注意的是", "众所周知", "总的来说", "综上所述", "毋庸置疑"]
+    policy: remove_when_no_function
+    allow_when: ["该过渡词确实标记了逻辑转折/收束, 且删除后关系不清"]
+    fix_hint: 让上下句的逻辑关系自己显形; 需要连接时用具体的因果/转折内容连接。
+
+  - id: mechanical_enumeration
+    name: 机械枚举
+    detect: 首先/其次/再次/最后 逐段套用, 或每点结构完全平行
+    policy: conditional
+    allow_when: ["确实是操作步骤或强顺序清单"]
+    fix_hint: 按信息的真实层级组织; 重要的多写, 次要的合并, 允许不对称。
+
+  # ---- 结构与节奏 ------------------------------------------------------------
+  - id: uniform_sentence_shape
+    name: 句形匀质
+    detect: 连续段落句长与句式几乎相同, 每段字数接近, 读起来像节拍器
+    policy: conditional
+    fix_hint: 长短句交替; 关键结论用短句落点, 铺垫与论证允许长句; 打破段落等长。
+
+  - id: per_paragraph_summary
+    name: 段段总结
+    detect: 每段结尾都来一句小结, 全文结尾再总结一次
+    policy: cap
+    fix_hint: 只在真正的收束点总结一次; 段尾允许停在事实或悬念上。
+
+  - id: over_symmetry
+    name: 过度对称
+    detect: 三段式排比标题、AABB式对仗小标题、强行押韵的口号结构
+    examples_bad: ["提效率、降成本、增价值", "看得懂、学得会、用得上"]
+    policy: conditional
+    allow_when: ["演讲/口号场景且内容确实对称"]
+    fix_hint: 标题写成有信息量的判断句, 长短不齐没有关系。
+
+  - id: colon_title_addiction
+    name: 冒号标题成瘾
+    detect: 标题一律 "X：从A到B" / "X：为什么…" 模板
+    policy: cap
+    fix_hint: 全文标题模式至少两种以上; 优先用具体结论/数字/冲突做标题。
+
+  # ---- 修辞与断言 ------------------------------------------------------------
+  - id: false_contrast
+    name: 假对立
+    detect: “不是A，而是B”“与其说A，不如说B”, 但 A 并非任何人的真实主张
+    policy: conditional
+    allow_when: ["A 是正文已出现的真实竞争解释", "B 有明确证据支撑"]
+    fix_hint: 直接陈述 B; 需要对比时, 对比对象必须真实存在且已被引入。
+
+  - id: not_only_but_also
+    name: 递进堆叠
+    detect: “不仅…更…”“这不仅是…更是…” 高频出现, 且后半句是拔高而非新信息
+    policy: cap
+    allow_when: ["两个层次都有实质内容且确属递进"]
+    fix_hint: 只保留信息量更大的那一半。
+
+  - id: strawman_setup
+    name: 虚构假想敌
+    detect: 先否定一种从未有人主张的观点, 再引出自己的观点
+    examples_bad: ["很多人以为…其实…(而'很多人'并不存在)"]
+    policy: conditional
+    allow_when: ["该误解真实、普遍, 且最好能指出来源"]
+    fix_hint: 直接给出观点与证据; 真有普遍误解时, 用具体场景呈现它。
+
+  - id: synonym_restatement
+    name: 同义反复
+    detect: 用近义词把同一个意思连说两三遍, 表面丰富, 无新增信息
+    examples_bad: ["高效、快捷、便利", "这很重要、很关键、不可或缺"]
+    policy: remove_when_no_function
+    fix_hint: 留一个最准的词; 想强调就给一个具体后果或数字, 不是再加一个形容词。
+
+  - id: abstract_noun_inflation
+    name: 抽象名词堆砌
+    detect: 为显得深刻而制造/堆叠抽象名词, 句子失去可验证含义
+    examples_bad: ["赋能业务闭环的底层逻辑", "重构认知范式的价值锚点"]
+    policy: conditional
+    fix_hint: 每个抽象名词都替换成"谁对谁做了什么"; 替换不出来的, 删。
+
+  # ---- 证据与强度 ------------------------------------------------------------
+  - id: unfounded_significance
+    name: 无依据意义拔高
+    detect: 结尾/段尾出现无证据的价值判断
+    examples_bad: ["具有重要意义", "值得深入探讨", "提供了全新视角", "开辟了新方向"]
+    policy: remove_when_no_function
+    fix_hint: 意义要么被具体写出(对谁、省了什么、改变了什么), 要么不写。
+
+  - id: evidence_inflation
+    name: 证据强度夸大
+    detect: 弱证据配强结论词
+    examples_bad: ["(单案例)证明了", "揭示了本质", "普遍适用", "彻底解决"]
+    policy: conditional
+    allow_when: ["证据强度确实支撑该结论词, 且经账本核对"]
+    fix_hint: 换用与证据匹配的词: 表明/提示/支持…解释/在当前范围内; 保留限制条件。
+
+  - id: hedging_boilerplate
+    name: 万能免责
+    detect: 结尾模板化免责, 与正文论证无关
+    examples_bad: ["当然，这因人而异", "仅供参考", "具体情况具体分析"]
+    policy: remove_when_no_function
+    allow_when: ["确有实质性适用边界, 且写出了边界是什么"]
+    fix_hint: 把真实边界写具体("这套打法只适用于粉丝<1万的冷启动期"), 或删。
+
+  # ---- 语气与人设 ------------------------------------------------------------
+  - id: hype_words
+    name: 高唤醒营销词连用
+    detect: 自媒体文案中营销刺激词密集出现, 人物显得不真实
+    examples_bad: ["炸裂", "颠覆", "王炸", "天花板", "杀疯了", "yyds", "格局打开"]
+    policy: cap
+    allow_when: ["人设本身是高唤醒风格且 StyleCard 明确允许, 单条至多1-2处"]
+    fix_hint: 情绪由事实落差制造, 不由形容词制造; 让数据和对比自己发出惊叹。
+
+  - id: slogan_over_logic
+    name: 口号替代论证
+    detect: 商业材料中用愿景口号顶替市场数据与商业逻辑
+    examples_bad: ["打造行业第一平台", "重新定义XX"]
+    policy: conditional
+    fix_hint: 口号最多出现在标题; 正文每个判断背后是数据、假设或推算, 且三者分开标注。
+
+  - id: known_concept_lecture
+    name: 重复解释已知概念
+    detect: 向专家受众解释其领域常识, 或向老粉重复讲入门概念
+    policy: conditional
+    allow_when: ["受众定位确为零基础", "概念是本文新引入的关键前提"]
+    fix_hint: 按 StyleCard 的 reader_assumption 校准; 专家文本直接使用术语。
+
+  - id: textbook_definition
+    name: 教科书式定义腔
+    detect: 论文/专业文本中出现"XX是指…的一种方法"式教科书定义
+    policy: conditional
+    fix_hint: 专业读者默认共享知识前提; 需要界定时用限定语在句内完成, 不单独立段。
+
+  - id: emoji_bullet_uniformity
+    name: 模板化排版腔
+    detect: 每行 emoji 开头 + 等长 bullet + 加粗关键词的"知识博主模板"
+    policy: conditional
+    allow_when: ["平台确为小红书等强排版渠道, 且 StyleCard 允许"]
+    fix_hint: 排版服务于扫读重点, 不是均匀装饰; 一屏最多一个视觉锚点。
+
+  - id: ai_pet_phrases
+    name: AI高频口癖
+    detect: 大模型输出中的高频习语, 单独出现无罪, 密集出现即露馅
+    examples_bad: ["让我们", "深入探讨", "不难发现", "可以说", "某种程度上",
+                   "在这个过程中", "扮演着重要角色", "赋能", "抓手", "闭环"]
+    policy: cap
+    fix_hint: 全文此类词总量压到自然水平; 逐个检查是否有更具体的说法。

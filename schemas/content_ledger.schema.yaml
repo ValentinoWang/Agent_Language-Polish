@@ -1,0 +1,71 @@
+# =============================================================================
+# ContentLedger Schema v0.1  —— 内容账本
+# -----------------------------------------------------------------------------
+# 内容账本是改写/创作任务开始前冻结的"事实合同": 列出所有不可变项与可变边界。
+# 改写引擎(无论是即用 Prompt、CLI 还是 MCP 服务)只被允许改变表达形式,
+# 账本内的一切都必须在产出中原样存活, 并在审计阶段逐项回归。
+#
+# 两种生成方式:
+#   A. 改写任务: 从原稿抽取(v0 由 prompt 内嵌抽取步骤完成, v0.1 起由独立节点完成)
+#   B. 创作任务: 由用户提供"必须包含的信息点"清单, 系统不得自行补充事实
+# =============================================================================
+
+# ---- 任务标识 ----------------------------------------------------------------
+ledger_id: ""          # 例 "run_20260827_001.ledger"
+task_type: ""          # rewrite(改写既有稿) | create(从信息点创作) | translate
+source_doc: null       # 改写任务: 原稿引用(文件/哈希); 创作任务: null
+created_at: ""
+
+# ---- 冻结项(逐类枚举, 空数组表示该类确认为空, 而非未检查) --------------------
+frozen:
+  entities: []         # 实体: 人名/机构/产品/项目/分支名/案例名
+                       # {text: "JFM", type: org, note: ""}
+  numbers: []          # 数字+单位+出处, 一条不许漂移
+                       # {value: "37.2", unit: "%", context: "转化率", source: "原稿p3 / 用户提供"}
+  claims: []           # 主张: 结论/判断, 必须记录强度与适用边界
+                       # {text: "...", strength: shown|suggested|proven,
+                       #  scope_limit: "仅在当前参数范围内", evidence: "..."}
+  causal_links: []     # 因果/相关关系, 防止改写中方向翻转或相关变因果
+                       # {from: "...", to: "...", type: causal|correlational|hypothesized}
+  citations: []        # 引用: 文献/链接/图表编号, 不得新增、遗漏、错配
+  equations: []        # 公式与符号(LaTeX 原文整体锁定)
+  quotes: []           # 直接引语, 一字不改
+  conditions: []       # 限制条件/前提假设, 改写中最易被"顺手删掉"的一类, 单列强调
+
+# ---- 商业/科研专用: 陈述定级 --------------------------------------------------
+# 每条对外陈述必须定级, 防止"计划达到"被润色成"已经实现"、局部结果被写成普遍结论。
+statements:
+  - text: ""
+    type: ""           # verified_fact(已验证事实) | internal_data(内部数据)
+                       # | external_estimate(外部估计) | management_assumption(管理层假设)
+                       # | forecast(预测) | aspiration(愿景)
+    upgrade_forbidden: true   # 定级只能降不能升
+
+# ---- 可变边界 ----------------------------------------------------------------
+allowed_operations: [] # 按改写强度授权, 从下列受控词表选取:
+                       #   split_sentence, merge_sentence      拆句/合句
+                       #   reorder_within_paragraph            段内重排
+                       #   reorder_paragraphs                  段落重排(strong 才允许)
+                       #   remove_redundancy                   删冗余
+                       #   adjust_register                     调整语域/语气
+                       #   replace_wording                     换词(锁定项除外)
+                       #   restructure_narrative               重建叙事(strong 才允许)
+forbidden_operations:
+  - add_facts          # 新增账本外事实
+  - delete_conditions  # 删除限制条件
+  - upgrade_claim_strength   # 抬高结论强度
+  - alter_locked_items       # 改动任何 frozen 项
+
+# ---- 缺口处理 ----------------------------------------------------------------
+gaps_policy: mark      # mark: 信息不足处保留原文/占位并标注 [待补], 严禁自行补全
+gaps: []               # 执行中发现的信息缺口清单, 交回人工
+
+# ---- 审计回归(改写完成后填写) -------------------------------------------------
+audit:
+  entities_intact: null      # true/false, 下同
+  numbers_intact: null
+  claims_strength_intact: null
+  citations_intact: null
+  conditions_intact: null
+  new_facts_introduced: []   # 必须为空数组才算通过
+  verdict: null              # pass | fail

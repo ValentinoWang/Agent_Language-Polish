@@ -1,0 +1,96 @@
+# =============================================================================
+# Pack Manifest Schema v0.1  —— 即插即用交付物的统一契约
+# -----------------------------------------------------------------------------
+# 本项目的硬性约定: 每一个"写作模块"开发到最后, 必须收口成一个 Pack 目录。
+# Pack 是写作模块的交付形态, 不是文档附录。没有 Pack, 模块就不算完成。
+#
+# 一个 Pack 目录的最小构成:
+#   packs/<name>/
+#   ├── pack.yaml            # 本 manifest
+#   ├── prompt.<用途>.zh.md  # target=prompt 的即用模板(v0 必须有)
+#   └── examples/            # 至少 1 个填好槽位的完整示例(强烈建议)
+#
+# 同一个 Pack 编译出多种目标形态(target), 形态可以增长, 源头永远只有一个:
+#   prompt : 单文件模板, 复制进任意聊天界面即用。零依赖。v0 必须交付。
+#   skill  : Claude Code 技能包(SKILL.md), 进 git 多终端同步。v0.1 起由编译生成。
+#   mcp    : MCP 工具注册, 供 Agent 编排调用, 背后接检索/账本/审计服务。v0.2。
+# 禁止为某个 target 单独手改产物内容——改源(区块/风格卡/领域包), 再重新编译。
+# =============================================================================
+
+# ---- 身份 --------------------------------------------------------------------
+pack: ""             # 目录名即 id, 例 self_media / distill / imitate / global.deai
+name: ""             # 人类可读名, 例 "自媒体口播脚本撰写"
+kind: ""             # writing_module(写作模块) | utility(通用工具, 如去AI味改写)
+version: ""          # semver。prompt 文本任何实质变化都要升版本并记 CHANGELOG。
+status: ""           # planned | usable(可即插即用) | compiled(由编译器生成)
+language: zh-CN
+owner: ""            # 唯一责任人
+description: ""
+
+# ---- 输入槽位 ----------------------------------------------------------------
+# prompt 目标形态里的 {{slot}} 与 mcp 目标形态的 arguments 共用这份定义。
+inputs:
+  - slot: ""         # 槽位名, 例 style_card
+    type: ""         # text | yaml | markdown | enum | number
+    required: true
+    source: ""       # user(用户手填) | style_card(取自风格卡) | ledger(取自内容账本)
+                     # | corpus(语料粘贴) | previous_pack(上游 pack 的输出)
+    enum: []         # type=enum 时的取值
+    description: ""
+
+# ---- 输出契约 ----------------------------------------------------------------
+outputs:
+  - name: ""         # 例 final / style_card / self_check
+    format: ""       # markdown | yaml | table
+    description: ""
+
+# ---- 目标形态 ----------------------------------------------------------------
+targets:
+  prompt:
+    file: ""         # 例 prompt.script_writing.zh.md
+    since: v0
+  skill:
+    file: null       # v0.1 起: .claude/skills/<pack>/SKILL.md(编译生成, 不手写)
+    since: v0.1
+  mcp:
+    tool: null       # v0.2 起: MCP 工具名, 例 style_rewrite
+    since: v0.2
+
+# ---- 编译来源 ----------------------------------------------------------------
+# 记录该 Pack 由哪些源"编译"而来。v0 为人工按模板拼装, v0.1 起自动化,
+# 但源清单从 v0 就要写清, 这是防止 Pack 退化成孤儿大 Prompt 的关键。
+compiled_from:
+  blocks:            # 七组块中用到了哪些(见 docs/00_方案总览.md §3.2)
+    - task_contract
+    - content_ledger
+    - style_card
+    - domain_pack
+    - exemplars
+    - operation_rules
+    - output_contract
+  style_cards: []    # 引用的风格卡 id(允许为空: 由使用者在槽位注入)
+  domain_pack: null  # 例 packs/self_media/pack 本体即领域包
+  negative_cards:    # 引用的负面规则卡
+    - packs/global/deai.negative.zh.yaml
+
+# ---- 完成定义(DoD) -----------------------------------------------------------
+# 全部为 true, Pack 才能标 usable。这份清单就是"写作模块收尾"的验收单。
+dod:
+  prompt_target_exists: false      # 即用模板存在且槽位与 inputs 一致
+  self_audit_embedded: false       # 模板内嵌自检步骤(账本回归+负面规则扫描)
+  negative_rules_referenced: false # 引用了负面规则卡(内嵌摘要或指引)
+  example_filled: false            # 至少 1 个填好槽位的完整示例
+  blind_test_passed: false         # 人工盲测: 对基线("一句话去AI味")的偏好率占优
+  facts_style_isolated: false      # 复核确认: 模板不诱导从范例继承事实
+  changelog_updated: false
+
+# ---- 评测 --------------------------------------------------------------------
+eval:
+  blind_test_set: null   # 盲测集位置(建议每个赛道固定 5-10 题)
+  baseline: "one_shot_deai"   # 对照基线: 单句"帮我去掉AI味"
+  gates:
+    locked_content_intact: 1.0  # 锁定内容保持率
+    unsourced_new_facts: 0
+    human_preference_over_baseline: ">0.6"
+
+changelog: []          # {version, date, change}

@@ -1,0 +1,101 @@
+# 遵循 schemas/pack_manifest.schema.yaml
+pack: self_media
+name: 自媒体口播脚本撰写
+kind: writing_module
+version: 0.1.0
+status: usable
+language: zh-CN
+owner: valentino
+description: >
+  选题+信息点+人设 → 可直接开拍的口播脚本。五步流程: 钩子(3选1+2备选)→时长分层
+  叙事结构→口播成稿(22字/句·停顿·留点标记)→自媒体特化去AI味7条扫描→账本回归。
+  口播规则沿用 openclaw-media 生产链路已验证的约束(≤22字/句、读出声检验)。
+
+inputs:
+  - slot: 平台
+    type: enum
+    required: true
+    source: user
+    enum: [抖音, 视频号, B站, 小红书, 播客]
+  - slot: 目标时长
+    type: text
+    required: true
+    source: user
+  - slot: 选题
+    type: text
+    required: true
+    source: user
+  - slot: 视频目标
+    type: text
+    required: true
+    source: user
+  - slot: 行动召唤强度
+    type: enum
+    required: true
+    source: user
+    enum: [none, soft, strong]
+  - slot: 人设
+    type: yaml
+    required: true
+    source: style_card
+    description: StyleCard(推荐) 或 三行迷你人设卡(降级)
+  - slot: 内容账本
+    type: markdown
+    required: true
+    source: ledger
+    description: 核心信息点 + 可用个人经历(无则声明"无") + 禁止提及
+
+outputs:
+  - name: hooks
+    format: markdown
+    description: 主用钩子1条 + 备选2条(注明类型)
+  - name: script
+    format: markdown
+    description: 口播稿, 带【停顿】【留点】标记
+  - name: subtitles
+    format: markdown
+    description: 字幕版
+  - name: publish_kit
+    format: markdown
+    description: 标题2条 + 置顶评论1条
+  - name: self_check
+    format: markdown
+    description: 时长核算/留点分布/去AI味扫描/账本回归/钩子兑现
+
+targets:
+  prompt:
+    file: prompt.script_writing.zh.md
+    since: v0
+  skill:
+    file: null
+    since: v0.1
+  mcp:
+    tool: style_write     # v0.2: 与 openclaw-media creation 链路的对接点
+    since: v0.2
+
+compiled_from:
+  blocks: [task_contract, content_ledger, style_card, domain_pack, operation_rules, output_contract]
+  style_cards: []
+  domain_pack: packs/self_media   # 本 pack 即自媒体领域包首个成员
+  negative_cards:
+    - packs/global/deai.negative.zh.yaml
+
+dod:
+  prompt_target_exists: true
+  self_audit_embedded: true
+  negative_rules_referenced: true
+  example_filled: true            # 模板内含完整填槽示例
+  blind_test_passed: false
+  facts_style_isolated: true
+  changelog_updated: true
+
+eval:
+  blind_test_set: null
+  baseline: one_shot_script       # 对照: "帮我写个60秒口播稿"单句提示
+  gates:
+    locked_content_intact: 1.0
+    unsourced_new_facts: 0
+    human_preference_over_baseline: ">0.6"
+
+changelog:
+  - {version: 0.1.0, date: 2026-08-27, change: 首版, 五步流程 + 自媒体特化去AI味7条 + 迷你人设卡降级路线}
