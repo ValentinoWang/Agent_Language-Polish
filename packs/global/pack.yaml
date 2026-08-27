@@ -1,91 +1,48 @@
-# 遵循 schemas/pack_manifest.schema.yaml
 pack: global.deai
-name: 去AI味改写（通用）
+name: 去 AI 味改写（通用）
 kind: utility
-version: 0.1.0
-status: usable
+version: 0.2.0
 language: zh-CN
 owner: valentino
-description: >
-  对任意文体的 AI 味草稿做"账本冻结 → 条件式负面规则改写 → 自检回归"的单轮即用改写。
-  不注入作者风格, 产出中性人味; 作者风格走 distill + imitate 两个 pack。
-
+description: 冻结内容账本后执行条件式文风清理；硬锁精确回归，语义锁不确定时阻断自动通过。
 inputs:
-  - slot: 文体
-    type: text
-    required: true
-    source: user
-    description: 公众号文章 / 口播脚本 / 论文段落 / 商业计划书章节等
-  - slot: 受众
-    type: text
-    required: true
-    source: user
-    description: 决定"已知概念"边界与语域
-  - slot: 渠道
-    type: text
-    required: true
-    source: user
-    description: 决定排版与节奏习惯
+  - {slot: 文体, type: text, required: true, source: user, description: 目标文体}
+  - {slot: 受众, type: text, required: true, source: user, description: 读者知识假设}
+  - {slot: 渠道, type: text, required: true, source: user, description: 发布渠道}
   - slot: 改写强度
     type: enum
     required: true
     source: user
     enum: [conservative, balanced, strong]
-    description: 对应不同的操作授权, 见模板内说明
-  - slot: 待改文本
-    type: text
-    required: true
-    source: user
-    description: 原稿全文, 长文建议分段
-
+    description: 操作授权
+  - {slot: 待改文本, type: text, required: true, source: user, description: 原稿}
 outputs:
-  - name: content_ledger
-    format: markdown
-    description: 冻结的八类内容账本
-  - name: final
-    format: markdown
-    description: 改写稿全文
-  - name: change_notes
-    format: table
-    description: 3-8 处主要修改(原文→改后→规则编号)
-  - name: self_check
-    format: markdown
-    description: 账本回归 + 新增事实数 + 待确认清单
-
+  - {name: content_ledger, format: json, description: 硬锁与语义锁}
+  - {name: final, format: markdown, description: 改写稿}
+  - {name: diff, format: markdown, description: 统一差异}
+  - {name: audit, format: json, description: 硬锁、语义锁、规则审计}
 targets:
-  prompt:
-    file: prompt.deai_rewrite.zh.md
-    since: v0
-  skill:
-    file: null
-    since: v0.1
-  mcp:
-    tool: style_rewrite     # v0.2 起并入 style_rewrite(profile 缺省时即走本 pack 规则)
-    since: v0.2
-
+  prompt: {file: prompt.deai_rewrite.zh.md, since: v0}
+  skill: {file: null, since: v0.1}
+  mcp: {tool: style_rewrite, since: v0.2}
 compiled_from:
   blocks: [task_contract, content_ledger, operation_rules, output_contract]
   style_cards: []
   domain_pack: null
-  negative_cards:
-    - packs/global/deai.negative.zh.yaml
-
-dod:
-  prompt_target_exists: true
-  self_audit_embedded: true
-  negative_rules_referenced: true
-  example_filled: false        # TODO: examples/ 待补一篇完整示例
-  blind_test_passed: false     # TODO: 建盲测集后回填
-  facts_style_isolated: true
-  changelog_updated: true
-
+  negative_cards: [packs/global/deai.negative.zh.yaml]
+delivery: {prompt: ready, skill: buildable, cli: ready, mcp: ready, api: ready}
+validation:
+  example: passed
+  automated_smoke: passed
+  formal_blind_test: pending
+  real_pilot: pending
+  notes: [自动化测试只证明工程合同；正式盲测与授权 Pilot 需要真实运行。]
+maturity: engine_compiled
 eval:
-  blind_test_set: null
+  evaluator_profile: global.deai
   baseline: one_shot_deai
-  gates:
-    locked_content_intact: 1.0
-    unsourced_new_facts: 0
-    human_preference_over_baseline: ">0.6"
-
+  smoke_set: evaluations/smoke/global.deai
+  formal_set: null
+  gates: {hard_lock_regression: 1.0, new_hard_facts: 0, semantic_uncertainty_requires_review: true}
 changelog:
-  - {version: 0.1.0, date: 2026-08-27, change: 首版, 17条条件式负面规则 + 账本冻结 + 自检回归}
+  - {version: 0.2.0, date: 2026-08-28, change: 状态三轴、硬锁/语义锁审计、分级规则检测与可编译交付}
