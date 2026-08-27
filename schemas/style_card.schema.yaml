@@ -1,170 +1,24 @@
-# =============================================================================
-# StyleCard Schema v0.1
-# -----------------------------------------------------------------------------
-# StyleCard 是"非参数式风格蒸馏"的输出物：把一位作者/一个人设/一个渠道的隐性文风,
-# 转成一份可执行、可组合、可检索、可审计的显式规范。
-#
-# 本文件是字段规范(以注释说明约束), 同时给出各字段的合法取值。
-# v0 阶段人工/LLM 按此结构产出并人工批准; v0.1 起由 styleos 校验器强制校验。
-#
-# 三条铁律:
-#   1. 风格卡只描述"怎么说", 不携带"说了什么"——严禁把语料中的事实/数字/案例写入。
-#   2. 每条由模型抽取的规则必须带证据(语料引用)与置信度, 否则 status 不得为
-#      human_approved。
-#   3. 有效风格 = 多层卡继承叠加, 冲突时按 precedence 解析, 不允许单卡包打天下。
-# =============================================================================
-
-# ---- 身份与版本 --------------------------------------------------------------
-id: ""              # 必填。命名约定: <track>.<owner>.<venue|channel>.<lang>.v<N>
-                    # 例: academic.user.jfm.zh.v1 / self_media.math_teacher.douyin.zh.v2
-version: ""         # 必填。semver, 例 "0.1.0"。规则的增删改都要升版本。
-status: draft       # draft | human_approved | deprecated
-                    # 只有 human_approved 的卡可用于正式改写任务。
-approved_by: null   # 人工批准者与日期, human_approved 时必填。例 "valentino@2026-08-27"
-
-# ---- 继承与叠加 --------------------------------------------------------------
-# 有效风格自上而下叠加, 冲突优先级(高覆盖低):
-#   本次任务约束 > 项目规则 > 作者规则 > 渠道/期刊规则 > 赛道规则 > 全局规则
-inherits: []        # 父卡 id 列表, 按"先全局后具体"排列。
-                    # 例: [global.zh.professional, domain.academic.paper, venue.jfm]
-
-# ---- 适用范围 ----------------------------------------------------------------
-scope:
-  track: ""         # academic | self_media | business | <可扩展>
-  genres: []        # 例: [paper_discussion, short_video_script, pitch_deck]
-  languages: []     # 例: [zh-CN, en]
-  channels: []      # 例: [journal, douyin, xiaohongshu, wechat_mp, investor_meeting]
-  audiences: []     # 例: [domain_expert, general_public, investor, student]
-  persona: null     # 可选, 人设 id。同一作者不同人设各建一卡, 不做"作者平均风格"。
-
-# ---- 人格语用(voice) ---------------------------------------------------------
-voice:
-  authority: ""             # restrained(克制) | assertive(强势) | peer(平视) | humble
-  distance: ""              # intimate(亲近) | professional | detached(疏离)
-  humor: ""                 # none | dry(冷幽默) | playful | self_deprecating(自嘲)
-  emotional_intensity: ""   # low | medium | high
-  reader_assumption: ""     # 对读者知识水平的默认假设, 例 domain_expert / zero_base
-  address_style: ""         # 对受众的称呼方式, 例 "你" / "大家" / 不直接称呼
-
-# ---- 词汇层 ------------------------------------------------------------------
-lexicon:
-  formality: ""             # colloquial | neutral | formal | academic
-  terminology_density: ""   # low | medium | high
-  concreteness: ""          # 具体词 vs 抽象词倾向: concrete_first | balanced | abstract_ok
-  verb_strength: ""         # 动词强度偏好: strong | neutral | hedged
-  signature_phrases: []     # 高频习惯搭配(只收表达形式, 不收事实), 每条附出现次数
-                            # 例: {text: "说白了", count: 9}
-  banned_phrases: []        # 该作者从不使用/明确排斥的词
-  term_locks: []            # 术语锁定表: {term: "涡激振动", keep_as: "VIV", note: ""}
-
-# ---- 句法层 ------------------------------------------------------------------
-syntax:
-  sentence_length: ""       # short(均短) | long | mixed(长短交替) —— 配合分布数据
-  sentence_length_dist: {}  # 可选, 统计特征: {p25: 9, p50: 16, p75: 28, max: 52}
-  clause_depth: ""          # shallow | moderate | deep (从句嵌套层级)
-  active_passive: ""        # active_dominant | passive_ok | passive_dominant
-  subject_visibility: ""    # explicit(主语显) | often_omitted(常省略)
-  question_ratio: ""        # none | rare | frequent (设问/反问频率)
-  imperative_ratio: ""      # none | rare | frequent (祈使句频率)
-  paragraph_opening: ""     # direct(直给) | scene(场景) | question | contrast
-
-# ---- 节奏层 ------------------------------------------------------------------
-rhythm:
-  punctuation_habits: []    # 例: ["少用分号", "破折号用于补充定义", "几乎不用感叹号"]
-  short_burst: false        # 是否使用连续短句制造节奏
-  pause_markers: []         # 口播类: 换气/停顿的典型位置描述
-  sentence_ending: ""       # 句尾落点习惯, 例 "落在名词/结论词, 少以语气词收尾"
-
-# ---- 段落层 ------------------------------------------------------------------
-paragraph:
-  length: ""                # 例 "2-4句为主, 单句段仅用于强调"
-  topic_sentence_position: ""  # first | middle | last | implicit
-  evidence_style: ""        # 证据展开方式, 例 "先数据后解释" / "先案例后归纳"
-  closing_habit: ""         # 段尾是否收束: no_summary | soft_landing | explicit_summary
-
-# ---- 逻辑层 ------------------------------------------------------------------
-logic:
-  preferred_moves: []       # 常用逻辑动作, 受控词表(可扩展):
-                            #   claim_evidence_interpretation_limit  主张-证据-解释-边界
-                            #   story_problem_conflict_solution      故事-问题-冲突-方案
-                            #   mechanism_supported_by_observation   观察支撑机制
-                            #   explicit_scope_boundary              显式适用边界
-                            #   conclusion_first                     结论前置
-                            #   contrast_with_common_practice        与常规做法对比
-  avoid_moves: []           # 例: invented_opposition(虚构对立面),
-                            #     conclusion_before_evidence, definition_of_common_concepts
-
-# ---- 认识立场(epistemics) ----------------------------------------------------
-epistemics:
-  prefer: []                # 偏好的强度词, 例 ["结果表明", "在当前参数范围内"]
-  restricted: []            # 受限词(需显式证据才可用), 例 ["证明", "首次发现", "普遍"]
-  rule:
-    restricted_terms_require_explicit_evidence: true
-    claim_strength_must_match_evidence: true
-
-# ---- 修辞层 ------------------------------------------------------------------
-rhetoric:
-  devices: []               # 允许的修辞及使用条件:
-                            # {device: analogy, condition: "仅用于降低理解门槛, 不用于论证"}
-  forbidden: []             # 该风格中不出现的修辞, 例 排比堆叠 / 反讽
-
-# ---- 信息密度 ----------------------------------------------------------------
-density:
-  info_per_sentence: ""     # low | medium | high (每句新信息量)
-  explanation_depth: ""     # minimal | moderate | thorough
-  tolerate_jumps: false     # 是否容忍逻辑跳跃(默认读者可自行补全)
-  repetition: ""            # none | key_points_only | didactic(教学式重复)
-
-# ---- 负面模式(去AI味核心) ----------------------------------------------------
-# 每条负面规则必须是条件式的, 不搞一刀切禁词。
-# 全局通用负面规则库见 packs/global/deai.negative.zh.yaml, 此处只放该卡特有项
-# 或对全局规则的覆盖(用相同 id 覆盖 policy)。
-negative_patterns:
-  - id: ""                  # 规则 id, 与全局库同名即为覆盖
-    pattern: ""             # 文字描述或正则
-    policy: ""              # forbid | conditional | remove_when_no_function
-    allow_when: []
-    reject_when: []
-    fix_hint: ""            # 触发后的改写方向提示
-
-# ---- 范例(只学形, 不学实) ----------------------------------------------------
-exemplars:
-  positive: []              # {text: "...", source: "doc_012#p34", note: "长因果链句式"}
-  negative: []              # 反例: 明确"不像该作者"的写法, 同样带来源或构造说明
-
-# ---- 证据与审计 --------------------------------------------------------------
-# 模型抽取的每条风格判断都应能在此追溯。
-evidence_rules:
-  - rule_id: ""             # 例 academic.claim_strength.017
-    description: ""
-    scope: {}               # 细化适用范围, 例 {sections: [results, discussion]}
-    support_count: 0        # 支撑该规则的语料片段数
-    confidence: 0.0         # 0-1
-    evidence_ids: []        # 语料引用, 例 [doc_012#p34, doc_021#p18]
-    counterexamples: []     # 反例引用
-    status: draft           # draft | human_approved | rejected
-
-# ---- 锁定项与质量门 ----------------------------------------------------------
-must_preserve:              # 改写时绝对不可变的内容类别
-  - numbers
-  - units
-  - entities
-  - equations
-  - variables
-  - citations
-  - figure_references
-  - table_references
-
-quality_gates:              # 使用该卡改写时的硬性验收线
-  unsupported_new_claims: 0 # 无来源新增事实数
-  numeric_drift: 0          # 数字漂移
-  citation_drift: 0         # 引用错配/增删
-  terminology_drift: 0      # 锁定术语被改
-  novelty_inflation: 0      # 结论强度被放大
-
-# ---- 元数据 ------------------------------------------------------------------
-meta:
-  distilled_from: []        # 蒸馏所用语料的 document_id 清单
-  corpus_period: ""         # 语料时间范围, 例 "2025-01 ~ 2026-08"(风格会漂移, 要标期)
-  distill_pack: ""          # 使用的蒸馏 pack 及版本, 例 "distill@0.1.0"
-  notes: ""
+# HUMAN-READABLE CONTRACT, NOT THE MACHINE SOURCE OF TRUTH.
+# Machine source: src/styleos/models.py::StyleCard
+id: self_media.example.douyin.zh.v1
+version: 0.1.0
+status: draft
+approved_by: null
+inherits: [global.zh.professional]
+scope: {track: self_media, channels: [douyin], audiences: [general], languages: [zh-CN]}
+voice: {}
+lexicon: {}
+syntax: {}
+rhythm: {}
+paragraph: {}
+logic: {preferred_moves: [], avoid_moves: [invented_opposition]}
+epistemics: {restricted: [证明, 普遍, 首次发现]}
+rhetoric: {}
+density: {}
+negative_patterns: []
+exemplars: {positive: [], negative: []}
+evidence_rules: []
+must_preserve: [numbers, units, entities, equations, citations, quotes]
+quality_gates: {unsupported_new_claims: 0, numeric_drift: 0, citation_drift: 0}
+review_queue: []
+meta: {raw_corpus_embedded: false}
