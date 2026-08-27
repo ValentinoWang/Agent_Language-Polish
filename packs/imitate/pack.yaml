@@ -1,87 +1,46 @@
-# 遵循 schemas/pack_manifest.schema.yaml
 pack: imitate
-name: 指定风格创作（StyleCard + 信息点 → 成稿）
+name: 指定风格创作与改写
 kind: writing_module
-version: 0.1.0
-status: usable
+version: 0.2.0
 language: zh-CN
 owner: valentino
-description: >
-  以人工批准的 StyleCard 为风格源、以内容账本为唯一事实源, 分层完成"提纲→成稿→
-  负面规则扫描→风格自评→账本回归"。含无卡降级用法(范文即席蒸馏)。
-
+description: StyleCard 只提供表达形式，ContentLedger 只提供事实；两者隔离后生成提纲、成稿与审计。
 inputs:
   - slot: 任务类型
     type: enum
     required: true
     source: user
     enum: [create, rewrite]
-  - slot: 体裁/渠道/受众/篇幅
-    type: text
-    required: true
-    source: user
-  - slot: 改写强度
-    type: enum
-    required: false
-    source: user
-    enum: [conservative, balanced, strong]
-    description: 仅 rewrite 任务
-  - slot: 风格卡
-    type: yaml
-    required: true
-    source: style_card
-    description: distill pack 产出并 human_approved 的 StyleCard; 降级用法可用 2-3 篇范文替代
-  - slot: 内容账本
-    type: markdown
-    required: true
-    source: ledger
-    description: create 任务为信息点清单; rewrite 任务由模板内嵌步骤从原稿抽取
-
+    description: 新写或改写
+  - {slot: 体裁/渠道/受众/篇幅, type: text, required: true, source: user, description: 任务合同}
+  - {slot: 风格卡, type: yaml, required: true, source: style_card, description: 正式任务必须 human_approved}
+  - {slot: 内容账本, type: markdown, required: true, source: ledger, description: 唯一事实来源}
 outputs:
-  - name: outline
-    format: markdown
-    description: 段落功能提纲
-  - name: final
-    format: markdown
-    description: 成稿全文
-  - name: self_check
-    format: markdown
-    description: 风格命中5处 + 账本回归 + 负面规则扫描 + 冲突缺口
-
+  - {name: outline, format: markdown, description: 段落功能提纲}
+  - {name: final, format: markdown, description: 成稿}
+  - {name: audit, format: json, description: 风格与事实审计}
 targets:
-  prompt:
-    file: prompt.style_imitate.zh.md
-    since: v0
-  skill:
-    file: null
-    since: v0.1
-  mcp:
-    tool: style_rewrite
-    since: v0.2
-
+  prompt: {file: prompt.style_imitate.zh.md, since: v0}
+  skill: {file: null, since: v0.1}
+  mcp: {tool: style_rewrite, since: v0.2}
 compiled_from:
-  blocks: [task_contract, content_ledger, style_card, exemplars, operation_rules, output_contract]
-  style_cards: []          # 使用时由槽位注入
+  blocks: [task_contract, content_ledger, style_card, domain_pack, exemplars, operation_rules, output_contract]
+  style_cards: []
   domain_pack: null
-  negative_cards:
-    - packs/global/deai.negative.zh.yaml
-
-dod:
-  prompt_target_exists: true
-  self_audit_embedded: true
-  negative_rules_referenced: true
-  example_filled: false
-  blind_test_passed: false
-  facts_style_isolated: true
-  changelog_updated: true
-
+  negative_cards: [packs/global/deai.negative.zh.yaml]
+delivery: {prompt: ready, skill: buildable, cli: ready, mcp: ready, api: ready}
+validation:
+  example: passed
+  automated_smoke: passed
+  formal_blind_test: pending
+  real_pilot: pending
+  notes: [合成测试不等于真人风格相似度验证。]
+maturity: engine_compiled
 eval:
-  blind_test_set: null
-  baseline: paste_examples_only    # 对照: 只贴范文说"模仿这个风格写"
-  gates:
-    locked_content_intact: 1.0
-    unsourced_new_facts: 0
-    human_preference_over_baseline: ">0.6"
-
+  evaluator_profile: imitate
+  baseline: paste_examples_only
+  smoke_set: evaluations/smoke/imitate
+  formal_set: null
+  gates: {style_card_approved: true, hard_lock_regression: 1.0, new_hard_facts: 0}
 changelog:
-  - {version: 0.1.0, date: 2026-08-27, change: 首版, 形实双源隔离 + 分层写作 + 三重自检 + 降级用法}
+  - {version: 0.2.0, date: 2026-08-28, change: 双源隔离、运行时审计、CLI/API/MCP 交付}
