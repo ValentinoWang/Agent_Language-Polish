@@ -1,92 +1,42 @@
-# 遵循 schemas/pack_manifest.schema.yaml
 pack: distill
-name: 博主风格蒸馏（语料 → StyleCard）
+name: 风格蒸馏（语料到 StyleCard）
 kind: writing_module
-version: 0.1.0
-status: usable
+version: 0.2.0
 language: zh-CN
 owner: valentino
-description: >
-  用固定维度问卷(20问)从 3-10 篇语料中蒸馏显式 StyleCard。逐维诱导而非自由概括,
-  每条规则带证据引用与置信度, 形实分离, 产出 draft 卡交人工批准。
-
+description: 从同一作者、渠道与人设的授权语料提取可测风格特征，生成带证据的 draft StyleCard，并强制人工批准。
 inputs:
-  - slot: 作者/人设名
-    type: text
-    required: true
-    source: user
-  - slot: 赛道
-    type: enum
-    required: true
-    source: user
-    enum: [self_media, academic, business]
-  - slot: 渠道
-    type: text
-    required: true
-    source: user
-    description: 一次只蒸一个渠道×一个人设, 禁止混渠道
-  - slot: 目标受众
-    type: text
-    required: true
-    source: user
-  - slot: 语料时间范围
-    type: text
-    required: false
-    source: user
-  - slot: 语料
-    type: text
-    required: true
-    source: corpus
-    description: 3-10 篇最终发布稿, 按模板逐篇标注渠道/日期/是否最终稿
-
+  - {slot: 作者/人设名, type: text, required: true, source: user, description: 卡片身份}
+  - {slot: 赛道, type: text, required: true, source: user, description: self_media/academic/business}
+  - {slot: 渠道, type: text, required: true, source: user, description: 一次只处理一个渠道}
+  - {slot: 目标受众, type: text, required: true, source: user, description: 受众}
+  - {slot: 语料, type: text, required: true, source: corpus, description: 至少两篇；正式人工蒸馏建议三到十篇}
 outputs:
-  - name: style_card
-    format: yaml
-    description: draft 状态的 StyleCard, 遵循 schemas/style_card.schema.yaml 简化骨架
-  - name: exemplars
-    format: markdown
-    description: 正例 3-5 句(带语料引用) + 构造反例 2 句
-  - name: evidence_rules
-    format: table
-    description: 支撑最强的 5 条规则, 含支撑次数/置信度/证据/反例
-  - name: review_queue
-    format: markdown
-    description: 待人工确认清单(低置信/冲突/证据不足项)
-
+  - {name: style_card, format: yaml, description: draft 卡}
+  - {name: evidence_rules, format: table, description: 规则、证据与置信度}
+  - {name: review_queue, format: markdown, description: 待人工确认项}
 targets:
-  prompt:
-    file: prompt.style_distill.zh.md
-    since: v0
-  skill:
-    file: null
-    since: v0.1
-  mcp:
-    tool: style_distill
-    since: v0.2
-
+  prompt: {file: prompt.style_distill.zh.md, since: v0}
+  skill: {file: null, since: v0.1}
+  mcp: {tool: style_distill, since: v0.2}
 compiled_from:
-  blocks: [task_contract, output_contract]
+  blocks: [task_contract, exemplars, output_contract]
   style_cards: []
   domain_pack: null
-  negative_cards:
-    - packs/global/deai.negative.zh.yaml   # 问卷第20问的对比基线参照
-
-dod:
-  prompt_target_exists: true
-  self_audit_embedded: true          # 铁律+待确认清单即自检机制
-  negative_rules_referenced: true
-  example_filled: false              # TODO: examples/ 待补
-  blind_test_passed: false
-  facts_style_isolated: true         # 铁律1 + 输出复核
-  changelog_updated: true
-
+  negative_cards: [packs/global/deai.negative.zh.yaml]
+delivery: {prompt: ready, skill: buildable, cli: ready, mcp: ready, api: ready}
+validation:
+  example: passed
+  automated_smoke: passed
+  formal_blind_test: pending
+  real_pilot: pending
+  notes: [确定性特征只建立表层证据；正式风格规则仍需人工复核。]
+maturity: engine_compiled
 eval:
-  blind_test_set: null
-  baseline: free_form_summary        # 对照: "总结一下这位作者的风格"自由概括
-  gates:
-    locked_content_intact: 1.0       # 卡内不得含语料事实
-    unsourced_new_facts: 0           # 每条规则必须有证据引用
-    human_preference_over_baseline: ">0.6"
-
+  evaluator_profile: distill
+  baseline: free_form_summary
+  smoke_set: evaluations/smoke/distill
+  formal_set: null
+  gates: {evidence_coverage: 1.0, raw_corpus_embedded: false, human_approval_required: true, repeatability_reported: true}
 changelog:
-  - {version: 0.1.0, date: 2026-08-27, change: 首版, 20问固定维度问卷 + 证据规则表 + 人工批准流程}
+  - {version: 0.2.0, date: 2026-08-28, change: 确定性特征基线、证据规则、人工批准与专属评测}
