@@ -115,7 +115,7 @@ rules:
     detector: {level: semantic, type: llm_judge, blocking: false, patterns: []}
   - id: abstract_cliche_density
     name: 抽象套话密度
-    detect: 赋能、打造闭环、深度融合或引发繿泛关注等套话替代了具体主体与动作
+    detect: 赋能、打造闭环、深度融合或引发广泛关注等套话替代了具体主体与动作
     policy: cap
     allow_when: [术语有明确定义且同句给出了具体主体、动作和结果]
     fix_hint: 命中后逐项改写为谁做了什么以及产生了什么结果
