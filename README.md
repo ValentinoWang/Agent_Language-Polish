@@ -38,6 +38,17 @@ styleos rewrite draft.md --pack self_media \
 
 默认 `provider=offline` 使用保守的规则基线，不会调用外部模型。使用外部模型前显式选择 `--provider openai` 或 `--provider anthropic`，并配置密钥和当前模型名。
 
+## 质量门禁（本地 CI）
+
+常规门禁只在本地执行，不依赖云端 Actions 分钟数；合并前必跑：
+
+```bash
+bash scripts/ci.sh              # 完整门禁：lint + 测试/覆盖率 + pack lint + schema/skill 编译 + 构建
+bash scripts/install-hooks.sh   # 安装 pre-push 钩子（推送前自动跑快速档）
+```
+
+GitHub Actions 仅保留手动触发入口（workflow_dispatch），且复用同一脚本。
+
 ## 交付界面
 
 ```bash
@@ -54,6 +65,7 @@ styleos readiness
 - `docs/01_StyleOS_原始方案.md`：原始研究方案；
 - `docs/02_openclaw_media_复用清单.md`：复用边界；
 - `docs/03_开发计划_v0-v0.3.md`：修订后的执行合同、完成情况与证据门槛。
+- `docs/04_开发对照审计_20260828.md`：实现对照方案的符合性审计、缺陷清单与 local CI 说明。
 
 ## 三条红线
 

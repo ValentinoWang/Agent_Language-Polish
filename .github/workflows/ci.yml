@@ -1,7 +1,9 @@
 name: ci
+# 本项目以本地 CI 为唯一常规门禁: bash scripts/ci.sh (合并前必跑, 详见 docs/04 §5)。
+# 此工作流不在 push/PR 上触发(不消耗 Actions 分钟数), 仅保留手动入口用于偶发的
+# 云端交叉验证, 且复用同一脚本, 保证两边检查一致。
 on:
-  push:
-  pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -17,11 +19,4 @@ jobs:
       - uses: astral-sh/setup-uv@v4
         with:
           python-version: ${{ matrix.python-version }}
-      - run: uv sync --extra dev --extra mcp
-      - run: uv run ruff check src tests
-      - run: uv run pytest --cov=styleos --cov-report=term-missing
-      - run: uv run styleos pack lint
-      - run: uv run styleos schema-export --output generated/schemas
-      - run: uv run styleos pack build --output .claude/skills
-      - run: uv build
-      - run: docker build -t styleos-ci .
+      - run: CI_DOCKER=1 bash scripts/ci.sh
