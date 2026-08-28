@@ -49,7 +49,7 @@ class PackRepository:
             errors.append("validation.example=passed but examples/ is empty")
         if manifest.validation.formal_blind_test.value == "passed" and not manifest.eval.formal_set:
             errors.append("formal_blind_test=passed requires eval.formal_set")
-        if manifest.maturity.value == "production_validated"::
+        if manifest.maturity.value == "production_validated":
             errors.append("production_validated must be set only by an evidence-bearing release process")
         return errors
 

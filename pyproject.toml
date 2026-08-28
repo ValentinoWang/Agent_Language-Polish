@@ -34,6 +34,9 @@ styleos-mcp = "styleos.mcp_server:main"
 [tool.hatch.build.targets.wheel]
 packages = ["src/styleos"]
 
+[tool.hatch.build.targets.wheel.force-include]
+"packs" = "styleos/packs"
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q --strict-markers"

@@ -3,7 +3,7 @@ from __future__ import annotations
 import math
 import re
 from collections import Counter
-from typing import Iterable
+from collections.abc import Iterable
 
 _SENTENCE_SPLIT = re.compile(r"(?<=[。！？!?；;])|\n+")
 _WORD = re.compile(r"[A-Za-z0-9_]+|[\u4e00-\u9fff]")

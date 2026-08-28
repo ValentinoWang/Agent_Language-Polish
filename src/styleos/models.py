@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any, Literal
 
@@ -118,7 +118,7 @@ class PackManifest(Model):
     changelog: list[dict[str, Any]] = Field(default_factory=list)
 
     @model_validator(mode="after")
-    def validate_delivery_contract(self) -> "PackManifest":
+    def validate_delivery_contract(self) -> PackManifest:
         prompt = self.targets.get("prompt")
         if self.delivery.prompt == DeliveryState.ready and (prompt is None or not prompt.file):
             raise ValueError("delivery.prompt=ready requires targets.prompt.file")
@@ -170,7 +170,7 @@ class StyleCard(BaseModel):
     meta: dict[str, Any] = Field(default_factory=dict)
 
     @model_validator(mode="after")
-    def approval_requires_evidence(self) -> "StyleCard":
+    def approval_requires_evidence(self) -> StyleCard:
         if self.status == "human_approved":
             if not self.approved_by:
                 raise ValueError("human_approved StyleCard requires approved_by")
@@ -261,7 +261,7 @@ class TraceEvent(Model):
     trace_id: str
     run_id: str
     stage: str
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
     duration_ms: float | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
     content: str | None = None
@@ -275,7 +275,7 @@ class FeedbackRecord(Model):
     edited_text: str | None = None
     reason: str | None = None
     source_id: str | None = None
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 __all__ = ["AuditReport", "AuditVerdict", "ContentLedger", "DeliveryAxis", "DeliveryState", "DetectionLevel", "EvidenceRule", "FeedbackRecord", "HardLocks", "LockFinding", "MaturityLevel", "NegativeRule", "PackManifest", "RuleFinding", "SemanticLock", "StyleCard", "TraceEvent", "ValidationAxis", "ValidationState"]

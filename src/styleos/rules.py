@@ -17,7 +17,7 @@ class RuleEngine:
         self.rules = rules
 
     @classmethod
-    def from_file(cls, path: str | Path) -> "RuleEngine":
+    def from_file(cls, path: str | Path) -> RuleEngine:
         payload = load_yaml(path)
         return cls([NegativeRule.model_validate(item) for item in payload.get("rules", [])])
 

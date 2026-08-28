@@ -43,6 +43,7 @@ styleos rewrite draft.md --pack self_media \
 ```bash
 styleos pack build --output .claude/skills
 styleos serve
+uv tool install '.[mcp]'
 styleos-mcp
 styleos readiness
 ```
