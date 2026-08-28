@@ -1,7 +1,7 @@
 pack: global.deai
 name: 去 AI 味改写（通用）
 kind: utility
-version: 0.2.0
+version: 0.2.1
 language: zh-CN
 owner: valentino
 description: 冻结内容账本后执行条件式文风清理；硬锁精确回归，语义锁不确定时阻断自动通过。
@@ -46,3 +46,4 @@ eval:
   gates: {hard_lock_regression: 1.0, new_hard_facts: 0, semantic_uncertainty_requires_review: true}
 changelog:
   - {version: 0.2.0, date: 2026-08-28, change: 状态三轴、硬锁/语义锁审计、分级规则检测与可编译交付}
+  - {version: 0.2.1, date: 2026-08-28, change: 回补迁移词条、放宽枚举检测、Prompt 规则区由 SSOT 编译并增加 drift 门禁}

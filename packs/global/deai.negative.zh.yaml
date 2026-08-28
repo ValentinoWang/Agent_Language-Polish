@@ -1,4 +1,4 @@
-version: 0.2.0
+version: 0.2.1
 id: global.deai.negative.zh
 principles:
   - 每句话必须产生信息增量；删除后信息不变的句子应删除。
@@ -13,21 +13,50 @@ rules:
     allow_when: [背景本身是后文论证所需事实]
     reject_when: [删除后正文信息完全不变]
     fix_hint: 直接从事实、冲突、结果或场景进入
-    detector: {level: deterministic, type: literal, blocking: false, patterns: [在当今快速发展的时代, 随着人工智能技术的不断进步, 近年来越来越多的人]}
+    detector:
+      level: deterministic
+      type: regex
+      blocking: false
+      patterns:
+        - 在当今快速发展的时代
+        - 随着人工智能技术的不断进步
+        - 近年来[，,]?越来越多的人
   - id: empty_transition
     name: 空转过渡
     detect: 过渡词不承担真实逻辑功能
     policy: remove_when_no_function
     allow_when: [删除后上下句逻辑关系会变得不清楚]
     fix_hint: 用具体因果或转折内容连接
-    detector: {level: deterministic, type: literal, blocking: false, patterns: [值得注意的是, 众所周知, 总的来说, 综上所述]}
+    detector:
+      level: deterministic
+      type: literal
+      blocking: false
+      patterns: [值得注意的是, 众所周知, 总的来说, 综上所述, 总而言之, 不仅如此, 不难发现]
   - id: mechanical_enumeration
     name: 机械枚举
-    detect: 首先其次再次最后按模板连续出现
+    detect: 首先、其次等顺序词被用作模板，而不是表达真实步骤关系
     policy: conditional
     allow_when: [确实是有强顺序的操作步骤]
     fix_hint: 按真实层级组织并允许不对称
-    detector: {level: deterministic, type: regex, blocking: false, patterns: ['首先.{0,120}其次.{0,120}(?:再次|最后)']}
+    detector:
+      level: deterministic
+      type: regex
+      blocking: false
+      patterns:
+        - 首先.{0,120}其次
+        - 首先.{0,120}其次.{0,120}(?:再次|最后)
+  - id: ai_pet_phrases
+    name: AI 高频邀约口癖
+    detect: 让我们或让我们一起被机械用作无信息量的引导
+    policy: cap
+    allow_when: [确实需要邀请读者共同执行一个明确动作]
+    fix_hint: 直接说明动作、对象和结果
+    detector:
+      level: deterministic
+      type: regex
+      blocking: false
+      patterns: ['让我们(?:一起)?']
+      max_count: 0
   - id: uniform_sentence_shape
     name: 句形匀质
     detect: 连续句子的长度和结构近乎完全一致
@@ -84,6 +113,18 @@ rules:
     allow_when: [术语在领域内有明确可验证定义]
     fix_hint: 改成主体、动作和结果
     detector: {level: semantic, type: llm_judge, blocking: false, patterns: []}
+  - id: abstract_cliche_density
+    name: 抽象套话密度
+    detect: 赋能、打造闭环、深度融合或引发繿泛关注等套话替代了具体主体与动作
+    policy: cap
+    allow_when: [术语有明确定义且同句给出了具体主体、动作和结果]
+    fix_hint: 命中后逐项改写为谁做了什么以及产生了什么结果
+    detector:
+      level: statistical
+      type: literal
+      blocking: false
+      patterns: [赋能, 打造闭环, 深度融合, 引发了广泛关注]
+      max_count: 0
   - id: unfounded_significance
     name: 无依据意义拔高
     detect: 具有重要意义或全新视角没有具体对象和后果

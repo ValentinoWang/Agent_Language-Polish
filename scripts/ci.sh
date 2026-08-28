@@ -8,7 +8,7 @@
 #
 # 用法:
 #   bash scripts/ci.sh              # 完整门禁: lint + 测试/覆盖率 + pack lint
-#                                   #           + schema export + skill build + uv build
+#                                   #           + prompt drift + schema export + skill build + uv build
 #   CI_FAST=1 bash scripts/ci.sh    # 快速档(pre-push 钩子用): lint + 测试, 跳过构建
 #   CI_DOCKER=1 bash scripts/ci.sh  # 追加 docker 镜像构建(默认跳过)
 # =============================================================================
@@ -37,6 +37,9 @@ fi
 step "styleos pack lint"
 uv run styleos pack lint
 
+step "prompt build drift check (negative-rule SSOT)"
+uv run styleos pack build --target prompt --check
+
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
@@ -44,7 +47,7 @@ step "schema export (code-first drift check)"
 uv run styleos schema-export --output "$TMP/schemas"
 
 step "skill build (pack compile check)"
-uv run styleos pack build --output "$TMP/skills"
+uv run styleos pack build --target skill --output "$TMP/skills"
 
 if [ "$FAST" != "1" ]; then
   step "uv build (wheel/sdist)"

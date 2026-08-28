@@ -18,6 +18,8 @@ _CONDITION = re.compile(r"仅|只在|在.{0,30}范围内|前提|条件|假设|�
 _CLAIM = re.compile(r"表明|提示|支持|证明|说明|发现|可能|倾向于|普遍|必然")
 _CAUSAL = re.compile(r"相关|关联|因果|导致|引起|造成|因此")
 _STRENGTH = {"可能": 1, "提示": 1, "倾向于": 1, "支持": 2, "表明": 2, "说明": 2, "发现": 2, "证明": 4, "必然": 4, "普遍": 4}
+_SEMANTIC_UNCERTAIN_THRESHOLD = 0.35
+_SEMANTIC_REVIEW_THRESHOLD = 0.70
 
 
 def _unique(values: list[str]) -> list[str]:
@@ -69,7 +71,7 @@ def build_ledger(source_text: str, *, task_type: str = "rewrite", must_keep: lis
         extraction={
             "method": "deterministic_v1",
             "hard_lock_regression_scope": "items successfully extracted into this ledger",
-            "semantic_policy": "best-effort comparison; uncertainty blocks automatic pass",
+            "semantic_policy": "dual-threshold comparison; moderate similarity requires review and uncertainty blocks automatic pass",
         },
     )
 
@@ -101,22 +103,79 @@ def audit_ledger(ledger: ContentLedger, source_text: str, output_text: str, *, r
     uncertainty: list[str] = []
     for lock in ledger.semantic_locks:
         candidate, similarity = _best_sentence(lock.text, output_sentences)
-        if similarity < 0.35:
-            semantic_findings.append(LockFinding(category=lock.kind, value=lock.text, status="uncertain", detail="No sufficiently similar output sentence; human review required."))
+        if similarity < _SEMANTIC_UNCERTAIN_THRESHOLD:
+            semantic_findings.append(
+                LockFinding(
+                    category=lock.kind,
+                    value=lock.text,
+                    status="uncertain",
+                    detail="No sufficiently similar output sentence; human review required.",
+                )
+            )
             uncertainty.append(f"{lock.kind}: {lock.text}")
             continue
         if lock.kind == "claim" and _strength(candidate) > lock.strength:
-            semantic_findings.append(LockFinding(category=lock.kind, value=lock.text, status="missing", detail=f"Claim strength may have increased in: {candidate}"))
+            semantic_findings.append(
+                LockFinding(
+                    category=lock.kind,
+                    value=lock.text,
+                    status="missing",
+                    detail=f"Claim strength may have increased in: {candidate}",
+                )
+            )
             continue
         if lock.kind == "causal_link":
             source_is_correlation = any(token in lock.text for token in ("相关", "关联"))
             output_is_causal = any(token in candidate for token in ("导致", "引起", "造成"))
             if source_is_correlation and output_is_causal:
-                semantic_findings.append(LockFinding(category=lock.kind, value=lock.text, status="missing", detail=f"Correlation may have been upgraded to causation: {candidate}"))
+                semantic_findings.append(
+                    LockFinding(
+                        category=lock.kind,
+                        value=lock.text,
+                        status="missing",
+                        detail=f"Correlation may have been upgraded to causation: {candidate}",
+                    )
+                )
                 continue
-        semantic_findings.append(LockFinding(category=lock.kind, value=lock.text, status="present", detail=f"Best semantic anchor similarity={similarity:.2f}"))
+        if similarity <= _SEMANTIC_REVIEW_THRESHOLD:
+            semantic_findings.append(
+                LockFinding(
+                    category=lock.kind,
+                    value=lock.text,
+                    status="uncertain",
+                    detail=(
+                        f"Moderate semantic anchor similarity={similarity:.2f}; "
+                        "automatic pass is not allowed."
+                    ),
+                )
+            )
+            uncertainty.append(f"{lock.kind}: {lock.text}")
+            continue
+        semantic_findings.append(
+            LockFinding(
+                category=lock.kind,
+                value=lock.text,
+                status="present",
+                detail=f"Best semantic anchor similarity={similarity:.2f}",
+            )
+        )
 
     hard_failure = any(item.status in {"missing", "added"} for item in hard_findings)
     semantic_failure = any(item.status == "missing" for item in semantic_findings)
-    verdict = AuditVerdict.failed if hard_failure or semantic_failure else AuditVerdict.review_required if uncertainty else AuditVerdict.passed
-    return AuditReport(run_id=run_id, hard_lock_findings=hard_findings, semantic_findings=semantic_findings, new_hard_facts=new_hard_facts, uncertainty=uncertainty, verdict=verdict, trace_id=trace_id, versions={"ledger": "1.0", "semantic_auditor": "heuristic_v1"})
+    verdict = (
+        AuditVerdict.failed
+        if hard_failure or semantic_failure
+        else AuditVerdict.review_required
+        if uncertainty
+        else AuditVerdict.passed
+    )
+    return AuditReport(
+        run_id=run_id,
+        hard_lock_findings=hard_findings,
+        semantic_findings=semantic_findings,
+        new_hard_facts=new_hard_facts,
+        uncertainty=uncertainty,
+        verdict=verdict,
+        trace_id=trace_id,
+        versions={"ledger": "1.0", "semantic_auditor": "heuristic_v2"},
+    )

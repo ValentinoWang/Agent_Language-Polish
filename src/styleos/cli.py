@@ -54,14 +54,35 @@ def pack_build(
         ".claude/skills"
     ),
     pack: Annotated[str | None, typer.Option("--pack")] = None,
+    target: Annotated[str, typer.Option("--target", help="prompt, skill, or all")] = "skill",
+    check: Annotated[bool, typer.Option("--check", help="Fail instead of writing when a prompt target has drifted")] = False,
 ) -> None:
-    """Compile Pack sources into Codex/Claude Skill files."""
+    """Compile prompt targets from the rule source and/or generate Skill files."""
     repository = _service().packs
     try:
-        paths = [repository.build_skill(pack, output)] if pack else repository.build_all_skills(output)
+        if target == "prompt":
+            paths = (
+                [repository.build_prompt(pack, check=check)]
+                if pack
+                else repository.build_all_prompts(check=check)
+            )
+        elif target == "skill":
+            if check:
+                _fail("--check is valid only with --target prompt or --target all")
+            paths = [repository.build_skill(pack, output)] if pack else repository.build_all_skills(output)
+        elif target == "all":
+            prompt_paths = (
+                [repository.build_prompt(pack, check=check)]
+                if pack
+                else repository.build_all_prompts(check=check)
+            )
+            skill_paths = [repository.build_skill(pack, output)] if pack else repository.build_all_skills(output)
+            paths = [*prompt_paths, *skill_paths]
+        else:
+            _fail(f"unsupported pack target: {target}")
     except (FileNotFoundError, ValueError) as exc:
         _fail(str(exc))
-    _print({"built": [str(path) for path in paths]})
+    _print({"target": target, "checked": check, "built": [str(path) for path in paths]})
 
 
 @app.command("schema-export")

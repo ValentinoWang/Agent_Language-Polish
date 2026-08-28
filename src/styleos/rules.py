@@ -25,11 +25,24 @@ class RuleEngine:
         sections = ["【条件式文风规则】"]
         for index, rule in enumerate(self.rules, 1):
             exception = "；允许条件：" + " / ".join(rule.allow_when) if rule.allow_when else ""
-            sections.append(f"{index}. [{rule.id}] {rule.name}：{rule.detect}。处置：{rule.fix_hint}{exception}。")
+            patterns = "；检测线索：" + " / ".join(rule.detector.patterns) if rule.detector.patterns else ""
+            sections.append(
+                f"{index}. [{rule.id}] {rule.name}：{rule.detect}。"
+                f"处置：{rule.fix_hint}{patterns}{exception}。"
+            )
         return "\n".join(sections)
 
     def project_validator_manifest(self) -> list[dict[str, object]]:
-        return [{"id": rule.id, "level": rule.detector.level.value, "type": rule.detector.type, "blocking": rule.detector.blocking, "patterns": rule.detector.patterns} for rule in self.rules]
+        return [
+            {
+                "id": rule.id,
+                "level": rule.detector.level.value,
+                "type": rule.detector.type,
+                "blocking": rule.detector.blocking,
+                "patterns": rule.detector.patterns,
+            }
+            for rule in self.rules
+        ]
 
     def assert_projection_parity(self) -> None:
         prompt = self.project_prompt()
@@ -44,25 +57,60 @@ class RuleEngine:
             level = rule.detector.level
             if level == DetectionLevel.deterministic:
                 occurrences = self._literal_or_regex_count(rule, text)
-                findings.append(RuleFinding(rule_id=rule.id, status="hit" if occurrences else "clear", occurrences=occurrences, blocking=rule.detector.blocking and occurrences > 0))
+                findings.append(
+                    RuleFinding(
+                        rule_id=rule.id,
+                        status="hit" if occurrences else "clear",
+                        occurrences=occurrences,
+                        blocking=rule.detector.blocking and occurrences > 0,
+                    )
+                )
             elif level == DetectionLevel.statistical:
                 occurrences, detail = self._statistical_count(rule, text)
-                findings.append(RuleFinding(rule_id=rule.id, status="hit" if occurrences else "clear", occurrences=occurrences, detail=detail, blocking=rule.detector.blocking and occurrences > 0))
+                findings.append(
+                    RuleFinding(
+                        rule_id=rule.id,
+                        status="hit" if occurrences else "clear",
+                        occurrences=occurrences,
+                        detail=detail,
+                        blocking=rule.detector.blocking and occurrences > 0,
+                    )
+                )
             elif include_pending and level == DetectionLevel.semantic:
-                findings.append(RuleFinding(rule_id=rule.id, status="pending_semantic", detail="Requires contextual semantic comparison or an LLM judge."))
+                findings.append(
+                    RuleFinding(
+                        rule_id=rule.id,
+                        status="pending_semantic",
+                        detail="Requires contextual semantic comparison or an LLM judge.",
+                    )
+                )
             elif include_pending:
-                findings.append(RuleFinding(rule_id=rule.id, status="manual_review", detail="Explicit human review rule."))
+                findings.append(
+                    RuleFinding(
+                        rule_id=rule.id,
+                        status="manual_review",
+                        detail="Explicit human review rule.",
+                    )
+                )
         return findings
 
     @staticmethod
-    def _literal_or_regex_count(rule: NegativeRule, text: str) -> int:
+    def _raw_pattern_count(rule: NegativeRule, text: str) -> int:
         count = 0
         for pattern in rule.detector.patterns:
-            count += len(re.findall(pattern, text)) if rule.detector.type == "regex" else text.count(pattern)
+            if rule.detector.type == "regex":
+                count += len(re.findall(pattern, text, flags=re.DOTALL))
+            else:
+                count += text.count(pattern)
+        return count
+
+    @classmethod
+    def _literal_or_regex_count(cls, rule: NegativeRule, text: str) -> int:
+        count = cls._raw_pattern_count(rule, text)
         return max(0, count - rule.detector.max_count) if rule.detector.max_count is not None else count
 
-    @staticmethod
-    def _statistical_count(rule: NegativeRule, text: str) -> tuple[int, str]:
+    @classmethod
+    def _statistical_count(cls, rule: NegativeRule, text: str) -> tuple[int, str]:
         sentences = split_sentences(text)
         if rule.id == "uniform_sentence_shape" and len(sentences) >= 4:
             lengths = [len(sentence) for sentence in sentences]
@@ -73,4 +121,8 @@ class RuleEngine:
             count = text.count("!") + text.count("！")
             threshold = rule.detector.max_count if rule.detector.max_count is not None else 2
             return max(0, count - threshold), f"exclamation count={count}, threshold={threshold}"
+        if rule.detector.patterns:
+            raw_count = cls._raw_pattern_count(rule, text)
+            threshold = rule.detector.max_count if rule.detector.max_count is not None else 0
+            return max(0, raw_count - threshold), f"pattern count={raw_count}, threshold={threshold}"
         return 0, "No statistical implementation registered; kept non-blocking."

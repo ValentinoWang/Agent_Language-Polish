@@ -5,8 +5,11 @@ from pathlib import Path
 
 from .io import atomic_write, load_yaml
 from .models import PackManifest
+from .rules import RuleEngine
 
 _SLOT = re.compile(r"\{\{\s*([^{}]+?)\s*\}\}")
+_RULES_START = "<!-- STYLEOS:NEGATIVE_RULES:START -->"
+_RULES_END = "<!-- STYLEOS:NEGATIVE_RULES:END -->"
 
 
 class PackRepository:
@@ -24,6 +27,58 @@ class PackRepository:
         if not path.exists():
             raise FileNotFoundError(f"Pack manifest not found: {pack}")
         return PackManifest.model_validate(load_yaml(path))
+
+    def _prompt_path(self, pack: str | Path) -> Path:
+        candidate = Path(pack)
+        pack_name = candidate.parent.name if candidate.name == "pack.yaml" else str(pack)
+        manifest = self.load(pack)
+        prompt_target = manifest.targets.get("prompt")
+        if not prompt_target or not prompt_target.file:
+            raise ValueError(f"Pack {pack_name} has no prompt target")
+        return self.root / pack_name / prompt_target.file
+
+    def _rule_engine(self) -> RuleEngine:
+        path = self.root / "global" / "deai.negative.zh.yaml"
+        if not path.exists():
+            raise FileNotFoundError(f"Negative rule source not found: {path}")
+        engine = RuleEngine.from_file(path)
+        engine.assert_projection_parity()
+        return engine
+
+    def compile_prompt(self, pack: str | Path) -> str:
+        prompt_path = self._prompt_path(pack)
+        prompt = prompt_path.read_text(encoding="utf-8")
+        has_start = _RULES_START in prompt
+        has_end = _RULES_END in prompt
+        if has_start != has_end:
+            raise ValueError(f"Prompt rule markers are incomplete: {prompt_path}")
+        if not has_start:
+            if self.load(pack).pack == "global.deai":
+                raise ValueError(f"Global de-AI prompt is missing rule projection markers: {prompt_path}")
+            return prompt
+        if prompt.count(_RULES_START) != 1 or prompt.count(_RULES_END) != 1:
+            raise ValueError(f"Prompt rule markers must appear exactly once: {prompt_path}")
+        before, remainder = prompt.split(_RULES_START, 1)
+        _, after = remainder.split(_RULES_END, 1)
+        projected = self._rule_engine().project_prompt()
+        return f"{before}{_RULES_START}\n{projected}\n{_RULES_END}{after}"
+
+    def prompt_drift(self, pack: str | Path) -> bool:
+        prompt_path = self._prompt_path(pack)
+        return prompt_path.read_text(encoding="utf-8") != self.compile_prompt(pack)
+
+    def build_prompt(self, pack: str | Path, *, check: bool = False) -> Path:
+        prompt_path = self._prompt_path(pack)
+        compiled = self.compile_prompt(pack)
+        if check:
+            if prompt_path.read_text(encoding="utf-8") != compiled:
+                raise ValueError(f"Prompt target drift detected: {prompt_path}")
+            return prompt_path
+        atomic_write(prompt_path, compiled)
+        return prompt_path
+
+    def build_all_prompts(self, *, check: bool = False) -> list[Path]:
+        return [self.build_prompt(pack_dir.name, check=check) for pack_dir in self.discover()]
 
     def lint(self, pack: str | Path) -> list[str]:
         candidate = Path(pack)
@@ -44,6 +99,11 @@ class PackRepository:
                 referenced = {match.strip() for match in _SLOT.findall(prompt_text)}
                 if referenced and not any(slot in reference for slot in declared for reference in referenced):
                     errors.append("prompt declares slots but none correspond to manifest inputs")
+                try:
+                    if self.prompt_drift(pack):
+                        errors.append("prompt target has drifted from the negative-rule source")
+                except (FileNotFoundError, ValueError) as exc:
+                    errors.append(str(exc))
         examples = pack_dir / "examples"
         if manifest.validation.example.value == "passed" and not any(examples.glob("*")):
             errors.append("validation.example=passed but examples/ is empty")
@@ -61,12 +121,16 @@ class PackRepository:
         prompt_target = manifest.targets.get("prompt")
         if not prompt_target or not prompt_target.file:
             raise ValueError(f"Pack {pack} has no prompt target")
-        prompt_path = self.root / pack / prompt_target.file
-        prompt = prompt_path.read_text(encoding="utf-8")
+        prompt = self.compile_prompt(pack)
         skill_dir = Path(output_root) / pack
         skill_path = skill_dir / "SKILL.md"
-        inputs = "\n".join(f"- `{item.slot}` ({item.type}, {'required' if item.required else 'optional'}): {item.description}" for item in manifest.inputs)
-        outputs = "\n".join(f"- `{item.name}` ({item.format}): {item.description}" for item in manifest.outputs)
+        inputs = "\n".join(
+            f"- `{item.slot}` ({item.type}, {'required' if item.required else 'optional'}): {item.description}"
+            for item in manifest.inputs
+        )
+        outputs = "\n".join(
+            f"- `{item.name}` ({item.format}): {item.description}" for item in manifest.outputs
+        )
         content = (
             f"# {manifest.name}\n\n"
             f"> Generated from `packs/{pack}/pack.yaml` and `{prompt_target.file}`. Do not edit this generated target directly.\n\n"
